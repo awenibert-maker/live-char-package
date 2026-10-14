@@ -1,0 +1,65 @@
+<!--
+需求收集内联表单弹窗（show_widget 用）
+- 直接整段复制作为 show_widget 的 widget_code
+- 提交通过 sendPrompt() 回传对话，不离开对话
+- 上限 10 行，可增删行
+-->
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;">直播间配置包需求收集表单，每行一个角色，最多十个</h2>
+<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;">
+  <div id="lc-rows"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;">
+    <span id="lc-cnt" style="font-size:12px;color:var(--color-text-secondary);">已填 0 / 10</span>
+    <div style="display:flex;gap:8px;">
+      <button id="lc-add">＋ 新增一个角色</button>
+      <button id="lc-go">确认提交 ↗</button>
+    </div>
+  </div>
+  <div id="lc-msg" style="font-size:12px;color:var(--color-text-secondary);margin-top:8px;"></div>
+</div>
+<script>
+(function(){
+  var MAX=10;
+  var L=['English','中文','Português (巴西)','العربية','Español','日本語','한국어','Bahasa Indonesia','其他'];
+  var wrap=document.getElementById('lc-rows');
+  var opts=L.map(function(x){return '<option>'+x+'</option>';}).join('');
+  function upd(){
+    var rs=wrap.querySelectorAll('.row');
+    Array.prototype.forEach.call(rs,function(r,i){r.querySelector('.i').textContent=i+1;});
+    var f=0;
+    Array.prototype.forEach.call(rs,function(r){if(r.querySelector('.n').value.trim())f++;});
+    document.getElementById('lc-cnt').textContent='已填 '+f+' / '+MAX+'（共 '+rs.length+' 行）';
+    document.getElementById('lc-add').disabled=rs.length>=MAX;
+  }
+  function add(){
+    if(wrap.querySelectorAll('.row').length>=MAX)return;
+    var d=document.createElement('div');
+    d.className='row';
+    d.style.cssText='border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px;margin-bottom:10px;';
+    d.innerHTML='<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">'+
+      '<span class="i" style="font-size:12px;color:var(--color-text-secondary);min-width:16px;"></span>'+
+      '<input class="n" placeholder="角色名（必填）" style="flex:1;">'+
+      '<select class="g" style="width:150px;">'+opts+'</select>'+
+      '<button class="r" title="删除这一行">×</button></div>'+
+      '<textarea class="d" placeholder="一句话需求：她是做什么的 / 什么性格 / 面向谁" style="width:100%;min-height:52px;"></textarea>';
+    d.querySelector('.r').onclick=function(){d.remove();upd();};
+    d.querySelector('.n').oninput=upd;
+    wrap.appendChild(d);
+    upd();
+  }
+  document.getElementById('lc-add').onclick=add;
+  document.getElementById('lc-go').onclick=function(){
+    var out=[],m=document.getElementById('lc-msg');
+    Array.prototype.forEach.call(wrap.querySelectorAll('.row'),function(r){
+      var n=r.querySelector('.n').value.trim();
+      if(n)out.push({name:n,lang:r.querySelector('.g').value,need:r.querySelector('.d').value.trim()});
+    });
+    if(!out.length){m.textContent='请至少填写一个角色名。';return;}
+    var txt=out.map(function(o,i){return (i+1)+'. '+o.name+' | '+o.lang+' | '+o.need;}).join('\n');
+    var p='按以下需求生成直播间配置包，直接开工：\n'+txt;
+    if(typeof sendPrompt==='function'){m.textContent='已提交，正在交给生成流程…';sendPrompt(p);}
+    else if(navigator.clipboard){navigator.clipboard.writeText(p);m.textContent='已复制到剪贴板，请粘贴发送。';}
+    else{m.textContent=p;}
+  };
+  add();add();add();
+})();
+</script>
